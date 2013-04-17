@@ -3,8 +3,10 @@
 class IndexModel extends Model {
 
     protected $texts = array(
-        'en' => 'Hello, World',
-        'es' => 'Hola mundo'
+        'en' => 'Hello world',
+        'es' => 'Hola mundo',
+        'nl' => 'Hallo wereld',
+        'fi' => 'Moi maailma',
     );
 
     public $language = 'en';

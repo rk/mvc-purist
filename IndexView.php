@@ -10,7 +10,7 @@ class IndexView extends View {
         echo "<p>", $this->model->getText(), "</p>";
 
         foreach ($this->model->getLanguages() as $language) {
-            echo '<a href="?action=language&lang=', $language, '">', $language, '</a> ';
+            echo '<a href="', url("language/$language"), '">', $language, '</a> ';
         }
     }
 }

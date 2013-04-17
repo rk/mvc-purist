@@ -1,5 +1,15 @@
 <?php
 
+define('DS', DIRECTORY_SEPARATOR);
+
+spl_autoload_register(function ($class) {
+    $filename = __DIR__ . DS . $class . '.php';
+
+    if (file_exists($filename)) {
+        require $filename;
+    }
+});
+
 abstract class Model {
 
 }
@@ -31,8 +41,10 @@ abstract class View {
 abstract class Controller {
 
     protected $model;
+    protected $request;
 
-    public function __construct(Model $model) {
+    public function __construct(Request $request, Model $model) {
+        $this->request = $request;
         $this->model = $model;
     }
 }
@@ -53,15 +65,7 @@ class Request {
     public function __construct($url) {
         $this->url      = $url;
         $this->segments = explode('/', trim($url, '/'));
-        $this->method   = 'get';
-
-        if (!empty($_POST)) {
-            $method = isset($_POST['_method']) ? $_POST['_method'] : 'post';
-
-            if (in_array($method, ['post', 'put', 'patch', 'delete'], true)) {
-                $this->method = $method;
-            }
-        }
+        $this->method   = strtolower($_SERVER['REQUEST_METHOD']);
     }
 
     public function segment($num) {
@@ -78,13 +82,13 @@ class Router {
     private $aliases = array();
     private $routes  = array();
 
-    public function alias($url, $controller, $view, $model) {
-        $this->aliases[$url] = compact('controller', 'view', 'model');
+    public function alias($url, $model, $view, $controller, $action='') {
+        $this->aliases[$url] = compact('controller', 'view', 'model', 'action');
         return $this;
     }
 
-    public function dynamic($pattern, $controller, $view, $model){
-        $this->routes[$pattern] = compact('controller', 'view', 'model');
+    public function dynamic($pattern, $model, $view, $controller, $action='') {
+        $this->routes[$pattern] = compact('controller', 'view', 'model', 'action');
         return $this;
     }
 
@@ -119,6 +123,7 @@ class Dispatcher {
     private $controller;
     private $model;
     private $view;
+    private $action;
 
     public function __construct(Request $request) {
         $this->router  = new Router;
@@ -128,24 +133,31 @@ class Dispatcher {
     public function dispatch() {
         if ($handler = $this->router->recognizes($this->request->url)) {
             $this->model      = new $handler['model'];
-            $this->controller = new $handler['controller']($this->model);
+            $this->controller = new $handler['controller']($this->request, $this->model);
             $this->view       = new $handler['view']($this->controller, $this->model);
+            $this->action     = $handler['action'];
         } else {
             throw new Exception("Unrecognized route.");
         }
 
-        if (isset($_GET['action']) && ($action = $_GET['action']))
-            $this->controller->{$action}();
+        if ($this->action)
+            $this->controller->{$this->action}();
 
         $this->view->render();
     }
 }
 
-require "IndexModel.php";
-require "IndexView.php";
-require "IndexController.php";
+function url($url='') {
+    return $_SERVER['SCRIPT_NAME'] . '/' . $url;
+}
 
+// Build our foundational objects
 $request    = new Request($_SERVER['PATH_INFO']);
 $dispatcher = new Dispatcher($request);
-$dispatcher->router->alias('/', 'IndexController', 'IndexView', 'IndexModel');
+
+// Register routes
+$dispatcher->router->alias('/', 'IndexModel', 'IndexView', 'IndexController');
+$dispatcher->router->dynamic('#/[a-z]{2}#i', 'IndexModel', 'IndexView', 'IndexController', 'language');
+
+// Handle request
 $dispatcher->dispatch();
