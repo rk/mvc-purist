@@ -17,10 +17,12 @@ abstract class Model {
 abstract class View {
 
     protected $controller;
+    protected $request;
     protected $model;
     protected $attributes = array();
 
-    public function __construct(Controller $controller, Model $model) {
+    public function __construct(Request $request, Controller $controller, Model $model) {
+        $this->request    = $request;
         $this->controller = $controller;
         $this->model      = $model;
     }
@@ -134,7 +136,7 @@ class Dispatcher {
         if ($handler = $this->router->recognizes($this->request->url)) {
             $this->model      = new $handler['model'];
             $this->controller = new $handler['controller']($this->request, $this->model);
-            $this->view       = new $handler['view']($this->controller, $this->model);
+            $this->view       = new $handler['view']($this->request, $this->controller, $this->model);
             $this->action     = $handler['action'];
         } else {
             throw new Exception("Unrecognized route.");
@@ -152,7 +154,7 @@ function url($url='') {
 }
 
 // Build our foundational objects
-$request    = new Request($_SERVER['PATH_INFO']);
+$request    = new Request(isset($_SERVER['PATH_INFO']) ? $_SERVER['PATH_INFO'] : '/');
 $dispatcher = new Dispatcher($request);
 
 // Register routes

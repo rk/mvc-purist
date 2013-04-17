@@ -2,14 +2,14 @@
 
 class IndexModel extends Model {
 
+    public $language = 'en';
+
     protected $texts = array(
         'en' => 'Hello world',
         'es' => 'Hola mundo',
         'nl' => 'Hallo wereld',
         'fi' => 'Moi maailma',
     );
-
-    public $language = 'en';
 
     public function getText() {
         if (isset($this->texts[$this->language])) {
