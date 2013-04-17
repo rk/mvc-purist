@@ -10,6 +10,26 @@ spl_autoload_register(function ($class) {
     }
 });
 
+/**
+ * Inspired by Laravel's array_get(), but without the dot notation or
+ * recursion. In general, we shouldn't need anything that complex.
+ *
+ * @param  array $array   Anything implementing ArrayAccess, or an Array
+ * @param  mixed $key     The key to test for.
+ * @param  mixed $default The default value
+ * @return mixed
+ */
+function array_get($array, $key, $default=null) {
+    if (isset($array[$key]))
+        return $array[$key];
+
+    return $default;
+}
+
+function url($url='') {
+    return $_SERVER['SCRIPT_NAME'] . '/' . $url;
+}
+
 abstract class Model {
 
 }
@@ -33,8 +53,8 @@ abstract class View {
         return $this;
     }
 
-    public function get($key) {
-        return $this->attributes[$key];
+    public function get($key, $default=null) {
+        return array_get($this->attributes, $key, $default);
     }
 
     abstract public function render();
@@ -67,15 +87,11 @@ class Request {
     public function __construct($url) {
         $this->url      = $url;
         $this->segments = explode('/', trim($url, '/'));
-        $this->method   = strtolower($_SERVER['REQUEST_METHOD']);
+        $this->method   = strtolower(array_get($_SERVER, 'REQUEST_METHOD', 'get'));
     }
 
     public function segment($num) {
-        if (isset($this->segments[$num])) {
-            return $this->segments[$num];
-        }
-
-        return null;
+        return array_get($this->segments, $num);
     }
 }
 
@@ -149,12 +165,8 @@ class Dispatcher {
     }
 }
 
-function url($url='') {
-    return $_SERVER['SCRIPT_NAME'] . '/' . $url;
-}
-
 // Build our foundational objects
-$request    = new Request(isset($_SERVER['PATH_INFO']) ? $_SERVER['PATH_INFO'] : '/');
+$request    = new Request(array_get($_SERVER, 'PATH_INFO', '/'));
 $dispatcher = new Dispatcher($request);
 
 // Register routes
