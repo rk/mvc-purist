@@ -38,12 +38,14 @@ abstract class View {
     protected $model;
     protected $attributes = array();
 
+    protected static $controller_class = null;
+
     public function __construct(Request $request, $model) {
         $this->request = $request;
         $this->model   = $model;
 
         // Using LSB for manual reuse of controllers, or using the IndexView:IndexController convention by default
-        $class = isset(static::$controller_class) ? static::$controller_class : str_replace('View', 'Controller', get_class($this));
+        $class = empty(static::$controller_class) ? str_replace('View', 'Controller', get_class($this)) : static::$controller_class;
         $this->controller = new $class($request, $model);
     }
 
