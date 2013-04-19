@@ -76,7 +76,6 @@ trait Attributes {
 }
 
 abstract class View {
-    use Attributes;
 
     protected $controller;
     protected $request;
@@ -88,15 +87,44 @@ abstract class View {
         $this->request = $request;
         $this->model   = $model;
 
-        // Using LSB for manual reuse of controllers, or using the IndexView:IndexController convention by default
-        $class = empty(static::$controller_class) ? str_replace('View', 'Controller', get_class($this)) : static::$controller_class;
+        $class = static::controllerClass();
         $this->controller = new $class($request, $model);
+    }
+
+    // Extracted to its own method for more extensibility
+    protected function controllerClass(){
+        // Using LSB for manual reuse of controllers, or using the IndexView::IndexController convention by default
+        return empty(static::$controller_class) ? str_replace('View', 'Controller', get_class($this)) : static::$controller_class;
     }
 
     abstract public function render();
 
     public function controller() {
         return $this->controller;
+    }
+}
+
+class Template {
+    use Attributes;
+
+    protected $template;
+
+    public function __construct($template, $attributes=null) {
+        $this->template = $template;
+
+        if (is_array($attributes))
+            $this->attributes = $attributes;
+    }
+
+    public function render() {
+        extract($this->attributes);
+
+        ob_start();
+        include $this->template;
+        $output = ob_get_contents();
+        ob_end_clean();
+
+        return $output;
     }
 }
 
