@@ -41,7 +41,10 @@ abstract class View {
     public function __construct(Request $request, $model) {
         $this->request = $request;
         $this->model   = $model;
-        $this->controller = new static::$controller_class($request, $model);
+
+        // Using LSB for manual reuse of controllers, or using the IndexView:IndexController convention by default
+        $class = isset(static::$controller_class) ? static::$controller_class : str_replace('View', 'Controller', get_class($this));
+        $this->controller = new $class($request, $model);
     }
 
     public function set($key, $value) {
@@ -193,7 +196,7 @@ class Dispatcher {
 
             $model      = new $handler['model'];
             $view       = new $handler['view']($this->request, $model);
-            $controller = $view->getController();
+            $controller = $view->controller();
             $action     = $handler['action'];
 
             if ($action)
