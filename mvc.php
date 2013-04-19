@@ -1,10 +1,10 @@
 <?php
 
 define('DS', DIRECTORY_SEPARATOR);
-define('ROOT', __DIR__);
+define('ROOT', __DIR__ . DS);
 
 spl_autoload_register(function ($class) {
-    $filename = __DIR__ . DS . $class . '.php';
+    $filename = ROOT . $class . '.php';
 
     if (file_exists($filename)) {
         require $filename;
@@ -31,12 +31,56 @@ function url($url='') {
     return $_SERVER['SCRIPT_NAME'] . '/' . $url;
 }
 
+/**
+ * Makes a given class capable of holding attributes via the magic methods.
+ * This is more reusable than implementing it many times over.
+ */
+trait Attributes {
+
+    /**
+     * @var array Holds the attributes assigned to this instance.
+     */
+    protected $attributes = array();
+
+    /**
+     * @param $key string
+     * @return mixed
+     */
+    public function __get($key) {
+        return array_get($this->attributes, $key);
+    }
+
+    /**
+     * @param $key   string
+     * @param $value mixed
+     */
+    public function __set($key, $value) {
+        $this->attributes[$key] = $value;
+    }
+
+    /**
+     * @param $key string
+     * @return bool
+     */
+    public function __isset($key) {
+        return isset($this->attributes[$key]);
+    }
+
+    /**
+     * @param $key string
+     */
+    public function __unset($key) {
+        unset($this->attributes[$key]);
+    }
+
+}
+
 abstract class View {
+    use Attributes;
 
     protected $controller;
     protected $request;
     protected $model;
-    protected $attributes = array();
 
     protected static $controller_class = null;
 
@@ -47,16 +91,6 @@ abstract class View {
         // Using LSB for manual reuse of controllers, or using the IndexView:IndexController convention by default
         $class = empty(static::$controller_class) ? str_replace('View', 'Controller', get_class($this)) : static::$controller_class;
         $this->controller = new $class($request, $model);
-    }
-
-    public function set($key, $value) {
-        $this->attributes[$key] = $value;
-
-        return $this;
-    }
-
-    public function get($key, $default=null) {
-        return array_get($this->attributes, $key, $default);
     }
 
     abstract public function render();
@@ -77,9 +111,6 @@ abstract class Controller {
     }
 }
 
-/**
- * Class Request
- */
 class Request {
 
     private $url;
@@ -171,13 +202,6 @@ class Router {
 
 }
 
-/**
- * Class Dispatcher
- *
- * @property Controller $controller
- * @property mixed $model
- * @property View $view
- */
 class Dispatcher {
 
     public $request;
