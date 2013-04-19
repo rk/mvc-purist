@@ -2,9 +2,12 @@
 
 define('DS', DIRECTORY_SEPARATOR);
 define('ROOT', __DIR__ . DS);
+define('APP', ROOT . DS . 'application' . DS);
+
+
 
 spl_autoload_register(function ($class) {
-    $filename = ROOT . $class . '.php';
+    $filename = APP . $class . '.php';
 
     if (file_exists($filename)) {
         require $filename;
@@ -71,6 +74,26 @@ trait Attributes {
      */
     public function __unset($key) {
         unset($this->attributes[$key]);
+    }
+
+}
+
+class Config {
+
+    protected static $options = array();
+    protected static $loaded = false;
+
+    public static function get($key, $default=null){
+        if (!static::$loaded) {
+            if (file_exists(APP . 'config.php')) {
+                static::$options = require(APP . 'config.php');
+            }
+
+            // Mark the config as loaded so we only check if the config file exists the first time.
+            static::$loaded  = true;
+        }
+
+        return array_get(static::$options, $key, $default);
     }
 
 }
