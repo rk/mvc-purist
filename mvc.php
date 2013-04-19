@@ -1,6 +1,7 @@
 <?php
 
 define('DS', DIRECTORY_SEPARATOR);
+define('ROOT', __DIR__);
 
 spl_autoload_register(function ($class) {
     $filename = __DIR__ . DS . $class . '.php';
@@ -30,10 +31,6 @@ function url($url='') {
     return $_SERVER['SCRIPT_NAME'] . '/' . $url;
 }
 
-abstract class Model {
-
-}
-
 abstract class View {
 
     protected $controller;
@@ -41,10 +38,10 @@ abstract class View {
     protected $model;
     protected $attributes = array();
 
-    public function __construct(Request $request, Controller $controller, Model $model) {
-        $this->request    = $request;
-        $this->controller = $controller;
-        $this->model      = $model;
+    public function __construct(Request $request, $model) {
+        $this->request = $request;
+        $this->model   = $model;
+        $this->controller = new static::$controller_class($request, $model);
     }
 
     public function set($key, $value) {
@@ -58,6 +55,10 @@ abstract class View {
     }
 
     abstract public function render();
+
+    public function controller() {
+        return $this->controller;
+    }
 }
 
 abstract class Controller {
@@ -65,7 +66,7 @@ abstract class Controller {
     protected $model;
     protected $request;
 
-    public function __construct(Request $request, Model $model) {
+    public function __construct(Request $request, $model) {
         $this->request = $request;
         $this->model = $model;
     }
@@ -73,26 +74,43 @@ abstract class Controller {
 
 /**
  * Class Request
- *
- * @property $url      string
- * @property $method   string
- * @property $segments array
  */
 class Request {
 
-    public $url;
-    public $method;
-    public $segments;
+    private $url;
+    private $method;
+    private $segments;
+    private $segment_count;
+    private $ajax;
 
     public function __construct($url) {
-        $this->url      = $url;
-        $this->segments = explode('/', trim($url, '/'));
-        $this->method   = strtolower(array_get($_SERVER, 'REQUEST_METHOD', 'get'));
+        $this->url           = $url;
+        $this->segments      = explode('/', trim($url, '/'));
+        $this->segment_count = count($this->segments);
+        $this->method        = strtolower(array_get($_SERVER, 'REQUEST_METHOD', 'get'));
+        $this->ajax          = strtolower(array_get($_SERVER, 'HTTP_X_REQUESTED_WITH')) === 'xmlhttprequest';
     }
 
-    public function segment($num) {
-        return array_get($this->segments, $num);
+    public function segment($num, $default=null) {
+        return array_get($this->segments, $num, $default);
     }
+
+    public function segmentCount() {
+        return $this->segment_count;
+    }
+
+    public function url() {
+        return $this->url;
+    }
+
+    public function method() {
+        return $this->method;
+    }
+
+    public function ajax() {
+        return $this->ajax;
+    }
+
 }
 
 class Router {
@@ -100,17 +118,35 @@ class Router {
     private $aliases = array();
     private $routes  = array();
 
-    public function alias($url, $model, $view, $controller, $action='') {
-        $this->aliases[$url] = compact('controller', 'view', 'model', 'action');
+    public function alias($url, $model, $view, $action = '') {
+        $this->aliases[$url] = compact('view', 'model', 'action');
         return $this;
     }
 
-    public function dynamic($pattern, $model, $view, $controller, $action='') {
-        $this->routes[$pattern] = compact('controller', 'view', 'model', 'action');
+    public function dynamic($pattern, $model, $view, $action = '') {
+        $this->routes[$pattern] = compact('view', 'model', 'action');
         return $this;
     }
 
-    public function recognizes($url){
+    private function conventional(Request $request) {
+        if ($request->segmentCount() > 1) {
+            // snake-case or snake_case to CamelCase for class names
+            $first  = strtolower($request->segment(0));
+            $first  = ucwords(str_replace(['-', '_'], ' ', $first));
+
+            $view   = $first . 'View';
+            $model  = $first . 'Model';
+            $action = is_int($request->segment(1)) ? $request->segment(1) : 'index';
+
+            return compact('view', 'model', 'action');
+        }
+
+        return null;
+    }
+
+    public function recognizes(Request $request) {
+        $url = $request->url();
+
         if (isset($this->aliases[$url])) {
             return $this->aliases[$url];
         }
@@ -119,6 +155,10 @@ class Router {
             if (preg_match($pattern, $url)) {
                 return $parameters;
             }
+        }
+
+        if ($parameters = $this->conventional($request)) {
+            return $parameters;
         }
 
         return null;
@@ -130,7 +170,7 @@ class Router {
  * Class Dispatcher
  *
  * @property Controller $controller
- * @property Model $model
+ * @property mixed $model
  * @property View $view
  */
 class Dispatcher {
@@ -138,30 +178,32 @@ class Dispatcher {
     public $request;
     public $router;
 
-    private $controller;
-    private $model;
-    private $view;
-    private $action;
-
     public function __construct(Request $request) {
         $this->router  = new Router;
         $this->request = $request;
     }
 
     public function dispatch() {
-        if ($handler = $this->router->recognizes($this->request->url)) {
-            $this->model      = new $handler['model'];
-            $this->controller = new $handler['controller']($this->request, $this->model);
-            $this->view       = new $handler['view']($this->request, $this->controller, $this->model);
-            $this->action     = $handler['action'];
-        } else {
-            throw new Exception("Unrecognized route.");
+        if ($handler = $this->router->recognizes($this->request)) {
+            /**
+             * @var $model Object
+             * @var $controller Controller
+             * @var $view View
+             */
+
+            $model      = new $handler['model'];
+            $view       = new $handler['view']($this->request, $model);
+            $controller = $view->getController();
+            $action     = $handler['action'];
+
+            if ($action)
+                $controller->{$action}();
+
+            $view->render();
+            exit;
         }
 
-        if ($this->action)
-            $this->controller->{$this->action}();
-
-        $this->view->render();
+        throw new Exception("Unrecognized route.");
     }
 }
 
@@ -170,8 +212,8 @@ $request    = new Request(array_get($_SERVER, 'PATH_INFO', '/'));
 $dispatcher = new Dispatcher($request);
 
 // Register routes
-$dispatcher->router->alias('/', 'IndexModel', 'IndexView', 'IndexController');
-$dispatcher->router->dynamic('#/[a-z]{2}#i', 'IndexModel', 'IndexView', 'IndexController', 'language');
+$dispatcher->router->alias('/', 'IndexModel', 'IndexView');
+$dispatcher->router->dynamic('#/[a-z]{2}#i', 'IndexModel', 'IndexView', 'language');
 
 // Handle request
 $dispatcher->dispatch();

@@ -1,6 +1,6 @@
 <?php
 
-class IndexModel extends Model {
+class IndexModel {
 
     public $language = 'en';
 
