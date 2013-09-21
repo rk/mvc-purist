@@ -76,24 +76,49 @@ trait Attributes {
 
 }
 
-class Config {
+class Registry {
 
-    protected static $options = array();
-    protected static $loaded = false;
+    protected static $instance;
 
-    public static function get($key, $default=null){
-        if (!static::$loaded) {
-            if (file_exists(APP . 'config.php')) {
-                static::$options = require(APP . 'config.php');
-            }
+    protected $request;
+    protected $config = array();
+    protected $fields = array();
 
-            // Mark the config as loaded so we only check if the config file exists the first time.
-            static::$loaded  = true;
-        }
+    /**
+     * @return Registry
+     */
+    public static function getInstance() {
+        if (empty(static::$instance))
+            static::$instance = new static;
 
-        return array_get(static::$options, $key, $default);
+        return static::$instance;
     }
 
+    protected function __construct(){
+        if (file_exists(APP . 'config.php')) {
+            $this->config = require(APP . 'config.php');
+        }
+    }
+
+    public function getConfig($key) {
+        return array_get($this->config, $key);
+    }
+
+    public function setRequest(Request $request) {
+        $this->request = $request;
+    }
+
+    public function getRequest() {
+        return $this->request;
+    }
+
+    public function set($key, $value) {
+        $this->fields[$key] = $value;
+    }
+
+    public function get($key) {
+        return array_get($this->fields, $key);
+    }
 }
 
 class Session implements SessionHandlerInterface {
@@ -115,7 +140,7 @@ class Session implements SessionHandlerInterface {
     }
 
     public static function active() {
-        return isset(static::$instance);
+        return !is_null(static::$instance);
     }
 
     public static function get($key, $default=null) {
@@ -127,7 +152,7 @@ class Session implements SessionHandlerInterface {
     }
 
     public static function configure() {
-        if (($options = Config::get('session')) && is_array($options)) {
+        if ($options = Registry::getInstance()->getConfig('session')) {
             foreach ($options as $key => $value) {
                 ini_set("session.$key", $value);
             }
@@ -371,7 +396,10 @@ Session::configure();
 Session::detect();
 
 // Build our foundational objects
-$request    = new Request(array_get($_SERVER, 'PATH_INFO', '/'));
+$registry = Registry::getInstance();
+$request  = new Request(array_get($_SERVER, 'PATH_INFO', '/'));
+$registry->setRequest($request);
+
 $dispatcher = new Dispatcher($request);
 
 // Register routes
