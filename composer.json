@@ -1,0 +1,21 @@
+{
+    "name": "rk/purist",
+    "description": "An attempt to create an MVC framework in a very strict, or pure, implementation.",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "rk",
+            "email": "robert@woodst.com"
+        }
+    ],
+    "minimum-stability": "dev",
+    "require": {
+        "filp/whoops": "~1.0"
+    },
+    "autoload": {
+        "psr-0": {
+             "": "application/",
+            "Purist\\": "src/"
+        }
+    }
+}

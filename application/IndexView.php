@@ -1,4 +1,5 @@
 <?php
+use Purist\View;
 
 /**
  * @property IndexController $controller
