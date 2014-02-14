@@ -70,12 +70,11 @@ class ServiceLocator {
 	}
 
 	public function addSingleton($class, $details=null) {
-		$this->classes[$class] = [
-			'class' => $class,
+		$this->add($class, [
 			'singleton' => true,
 			'dependencies' => is_array($details) ? $details : null,
-			'closure' => is_callable($details) ? $details : null,
-		];
+			'callback' => is_callable($details) ? $details : null,
+		]);
 	}
 
 	public function addSingletons(Array $classes){
@@ -153,6 +152,8 @@ class ServiceLocator {
 					$args[] = $params[$parameter->getName()];
 				} elseif ($klass = $parameter->getClass()) {
 					$args[] = $this->get($klass->getName());
+				} else {
+					throw new ServiceLocatorException("Don't know how to handle parameter: $parameter");
 				}
 			}
 		}

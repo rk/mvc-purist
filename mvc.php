@@ -32,7 +32,7 @@ $run->pushHandler(new Whoops\Handler\PrettyPageHandler());
 $run->register();
 
 // Initialize our service locator
-$container  = new Purist\ServiceLocator();
+$container = new Purist\ServiceLocator();
 
 // Register our Foundational Objects
 $container->addInstance(new Purist\Request(array_get($_SERVER, 'PATH_INFO', '/')));
