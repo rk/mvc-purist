@@ -10,15 +10,20 @@ namespace Purist;
 
 class Request {
 
-    private $url;
+    private $url = '/';
     private $method;
     private $segments;
     private $segment_count;
     private $ajax;
 
-    public function __construct($url) {
-        $this->url           = $url;
-        $this->segments      = explode('/', trim($url, '/'));
+    public function __construct() {
+	    if (isset($_SERVER['PATH_INFO'])) {
+		    $this->url = $_SERVER['PATH_INFO'];
+	    } else {
+		    $this->url = substr($_SERVER['REQUEST_URI'], 0, strlen($_SERVER['SCRIPT_NAME'])) ?: '/';
+	    }
+
+	    $this->segments      = explode('/', trim($this->url, '/'));
         $this->segment_count = count($this->segments);
         $this->method        = strtolower(array_get($_SERVER, 'REQUEST_METHOD', 'get'));
         $this->ajax          = strtolower(array_get($_SERVER, 'HTTP_X_REQUESTED_WITH')) === 'xmlhttprequest';

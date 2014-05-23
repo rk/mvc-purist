@@ -9,6 +9,7 @@
 namespace Purist;
 
 use Exception;
+use Purist\IOC\Container;
 
 class Dispatcher {
 
@@ -16,7 +17,7 @@ class Dispatcher {
     public $router;
 	public $container;
 
-    public function __construct(ServiceLocator $container, Router $router, Request $request) {
+    public function __construct(Container $container, Router $router, Request $request) {
 	    $this->container = $container;
 	    $this->router    = $router;
         $this->request   = $request;
@@ -35,7 +36,8 @@ class Dispatcher {
             $action     = $handler['action'];
 
             if ($action) {
-                $view->controller()->{$action . 'Action'}();
+                call_user_func_array(array($view->controller(), $action . 'Action'), array_get($handler, 'parameters', []));
+                // $view->controller()->{$action . 'Action'}();
             }
 
             $view->render();

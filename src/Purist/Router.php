@@ -49,7 +49,11 @@ class Router {
         }
 
         foreach ($this->routes as $pattern => $parameters) {
-            if (preg_match($pattern, $url)) {
+            if (preg_match($pattern, $url, $matches)) {
+                if (count($matches) > 1) {
+                    $parameters['parameters'] = array_slice($matches, 1);
+                }
+
                 return $parameters;
             }
         }

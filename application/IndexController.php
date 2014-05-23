@@ -6,9 +6,9 @@ use Purist\Controller;
  */
 class IndexController extends Controller {
 
-    public function languageAction() {
-        if ($lang = strtolower($this->request->segment(1))) {
-            $this->model->language = $lang;
-        }
+    public function languageAction($lang='en') {
+        // if ($lang = strtolower($this->request->segment(1))) {
+        $this->model->language = $lang;
+        // }
     }
 }

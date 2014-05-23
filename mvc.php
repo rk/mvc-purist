@@ -32,21 +32,21 @@ $run->pushHandler(new Whoops\Handler\PrettyPageHandler());
 $run->register();
 
 // Initialize our service locator
-$container = new Purist\ServiceLocator();
+$container = new \Purist\IOC\Container();
 
 // Register our Foundational Objects
-$container->addInstance(new Purist\Request(array_get($_SERVER, 'PATH_INFO', '/')));
-
 $container->addAliases([
 	'router'   => 'Purist\\Router',
+	'request'  => 'Purist\\Request',
 	'registry' => 'Purist\\ConfigRegistry',
 ]);
 
 // Register classes that should only have a singular instance (but aren't actually singletons)
 $container->addSingletons([
+	'Purist\\Request',
 	'Purist\\Router',
 	'Purist\\ConfigRegistry',
-	'Purist\\Dispatcher' => ['Purist\\ServiceLocator', 'Purist\\Router', 'Purist\\Request']
+	'Purist\\Dispatcher' => ['Purist\\IOC\\Container', 'Purist\\Router', 'Purist\\Request']
 ]);
 
 $dispatcher = $container->get('Purist\\Dispatcher');
@@ -57,7 +57,7 @@ Purist\Session::detect();
 
 // Register routes
 $dispatcher->router->alias('/', 'IndexModel', 'IndexView');
-$dispatcher->router->dynamic('#/[a-z]{2}#i', 'IndexModel', 'IndexView', 'language');
+$dispatcher->router->dynamic('#/([a-z]{2})#i', 'IndexModel', 'IndexView', 'language');
 
 // Handle request
 $dispatcher->dispatch();
